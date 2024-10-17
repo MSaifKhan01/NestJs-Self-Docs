@@ -178,7 +178,6 @@ const app = await NestFactory.create(AppModule, { abortOnError: false });
 
 
 
----
 
 ## **Controllers in NestJS**
 
