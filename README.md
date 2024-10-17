@@ -5,7 +5,7 @@
 ### Prerequisites
 - **Node.js** version 16 or higher must be installed to use NestJS, as it leverages modern JavaScript/TypeScript features available in these versions.
 
----
+
 
 ### Setup Commands
 1. **Install Nest CLI**:  
@@ -26,7 +26,7 @@
      - `test/`: Holds unit and integration test files.
      - `node_modules/`: Installed dependencies.
 
----
+
 
 ### Core Files Overview
 NestJS organizes an application into **controllers**, **services**, and **modules** to follow the modular architecture pattern.
@@ -813,3 +813,196 @@ await app.listen(3000);
 ```
 
 ---
+
+
+
+
+
+# NestJS Exception Filters Summary
+
+### 1. **What are Exception Filters?**
+NestJS has a built-in exception handling mechanism that catches unhandled errors and returns a proper response. The default filter handles `HttpException` and its subclasses, but you can create custom filters to handle other exceptions.
+
+### 2. **Default Global Exception Filter**
+When an unhandled exception occurs, Nest automatically returns a `500 Internal Server Error` response if it doesn't recognize the exception type.
+
+Example response:
+```json
+{
+  "statusCode": 500,
+  "message": "Internal server error"
+}
+```
+
+### 3. **Throwing Standard Exceptions**
+Nest provides built-in exceptions like `HttpException` for handling errors in a REST/GraphQL API.
+
+Example:
+```typescript
+@Get()
+async findAll() {
+  throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
+}
+```
+Response:
+```json
+{
+  "statusCode": 403,
+  "message": "Forbidden"
+}
+```
+
+### 4. **Custom Error Messages**
+You can override the default error message and create a custom response body.
+
+Example:
+```typescript
+@Get()
+async findAll() {
+  throw new HttpException({
+    status: HttpStatus.FORBIDDEN,
+    error: 'This is a custom message',
+  }, HttpStatus.FORBIDDEN);
+}
+```
+Response:
+```json
+{
+  "status": 403,
+  "error": "This is a custom message"
+}
+```
+
+### 5. **Creating Custom Exceptions**
+You can extend the `HttpException` class to create custom exceptions.
+
+Example:
+```typescript
+export class ForbiddenException extends HttpException {
+  constructor() {
+    super('Forbidden', HttpStatus.FORBIDDEN);
+  }
+}
+
+@Get()
+async findAll() {
+  throw new ForbiddenException();
+}
+```
+
+### 6. **Built-in HTTP Exceptions**
+Nest provides several common HTTP exceptions:
+- `BadRequestException`
+- `UnauthorizedException`
+- `ForbiddenException`
+- `NotFoundException`
+- `InternalServerErrorException`
+
+Example:
+```typescript
+throw new BadRequestException('Invalid input');
+```
+
+### 7. **Custom Exception Filters**
+You can create custom exception filters to handle exceptions in your own way, such as logging or returning a custom response format.
+
+Example of a custom filter that handles `HttpException`:
+```typescript
+import { ExceptionFilter, Catch, ArgumentsHost, HttpException } from '@nestjs/common';
+import { Request, Response } from 'express';
+
+@Catch(HttpException)
+export class HttpExceptionFilter implements ExceptionFilter {
+  catch(exception: HttpException, host: ArgumentsHost) {
+    const ctx = host.switchToHttp();
+    const response = ctx.getResponse<Response>();
+    const request = ctx.getRequest<Request>();
+    const status = exception.getStatus();
+
+    response
+      .status(status)
+      .json({
+        statusCode: status,
+        timestamp: new Date().toISOString(),
+        path: request.url,
+      });
+  }
+}
+```
+
+### 8. **Binding Filters**
+Filters can be applied at different levels:
+- **Method-scoped**: Apply to a specific method using the `@UseFilters()` decorator.
+- **Controller-scoped**: Apply to an entire controller.
+- **Global-scoped**: Apply to the entire application.
+
+Example of method-scoped filter:
+```typescript
+@Post()
+@UseFilters(new HttpExceptionFilter())
+async create() {
+  throw new ForbiddenException();
+}
+```
+
+Example of global filter in `main.ts`:
+```typescript
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+  app.useGlobalFilters(new HttpExceptionFilter());
+  await app.listen(3000);
+}
+bootstrap();
+```
+
+### 9. **Catching All Exceptions**
+To catch all exceptions, leave the `@Catch()` decorator parameter empty.
+
+Example:
+```typescript
+@Catch()
+export class AllExceptionsFilter implements ExceptionFilter {
+  catch(exception: unknown, host: ArgumentsHost) {
+    const ctx = host.switchToHttp();
+    const response = ctx.getResponse<Response>();
+    const status = exception instanceof HttpException
+      ? exception.getStatus()
+      : HttpStatus.INTERNAL_SERVER_ERROR;
+
+    response
+      .status(status)
+      .json({
+        statusCode: status,
+        timestamp: new Date().toISOString(),
+        path: request.url,
+      });
+  }
+}
+```
+
+### 10. **Extending the Global Exception Filter**
+You can extend the built-in `BaseExceptionFilter` to add more functionality.
+
+Example:
+```typescript
+@Catch()
+export class AllExceptionsFilter extends BaseExceptionFilter {
+  catch(exception: unknown, host: ArgumentsHost) {
+    super.catch(exception, host);
+  }
+}
+```
+
+In `main.ts`:
+```typescript
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+  const { httpAdapter } = app.get(HttpAdapterHost);
+  app.useGlobalFilters(new AllExceptionsFilter(httpAdapter));
+  await app.listen(3000);
+}
+bootstrap();
+```
+
+
+
