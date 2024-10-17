@@ -167,7 +167,7 @@ const app = await NestFactory.create(AppModule, { abortOnError: false });
 
 - **View App in Browser**:  
   Once the app is running, you can access it in your browser by going to `http://localhost:3000/`. If everything is set up correctly, you should see the "Hello World!" message returned by the `getHello()` method in `AppController`.
-```
+
 
 
 
