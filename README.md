@@ -1005,3 +1005,135 @@ bootstrap();
 
 
 
+# Pipes in NestJS
+
+**Pipes** are classes that transform or validate data before it reaches the controller in NestJS. They are annotated with `@Injectable()` and must implement the `PipeTransform` interface.
+
+### Use Cases
+1. **Transformation**: Convert input data to a specific format (e.g., string to integer).
+2. **Validation**: Check if input data is valid. If invalid, throw an error.
+
+Pipes work on the arguments passed to controller methods. They run **before** the method is called.
+
+### Built-in Pipes
+NestJS comes with several built-in pipes like:
+- `ValidationPipe`
+- `ParseIntPipe`
+- `ParseBoolPipe`
+- `ParseArrayPipe`
+- `ParseUUIDPipe`
+- `DefaultValuePipe`
+
+Example: Using `ParseIntPipe` for transforming a parameter:
+
+```typescript
+@Get(':id')
+async findOne(@Param('id', ParseIntPipe) id: number) {
+  return this.catsService.findOne(id);
+}
+```
+
+In this example, the pipe ensures `id` is a number, or it throws an exception if not.
+
+### Custom Pipes
+You can create custom pipes by implementing the `PipeTransform` interface.
+
+Example: Simple `ValidationPipe`:
+
+```typescript
+@Injectable()
+export class ValidationPipe implements PipeTransform {
+  transform(value: any) {
+    // Return value as-is (no validation in this basic example)
+    return value;
+  }
+}
+```
+
+To use this custom pipe in a method:
+
+```typescript
+@Post()
+@UsePipes(new ValidationPipe())
+async create(@Body() createCatDto: CreateCatDto) {
+  return this.catsService.create(createCatDto);
+}
+```
+
+### Zod-based Validation Example
+You can use libraries like **Zod** to define schemas for validation. Here's how:
+
+1. Install `zod`:
+   ```bash
+   npm install zod
+   ```
+
+2. Define a schema and use it in a custom pipe:
+
+```typescript
+import { z } from 'zod';
+
+const createCatSchema = z.object({
+  name: z.string(),
+  age: z.number(),
+  breed: z.string(),
+});
+
+export class ZodValidationPipe implements PipeTransform {
+  constructor(private schema: ZodSchema) {}
+
+  transform(value: any) {
+    try {
+      return this.schema.parse(value);
+    } catch {
+      throw new BadRequestException('Validation failed');
+    }
+  }
+}
+
+@UsePipes(new ZodValidationPipe(createCatSchema))
+async create(@Body() createCatDto: CreateCatDto) {
+  return this.catsService.create(createCatDto);
+}
+```
+
+### Global Pipes
+You can apply pipes globally across your entire application:
+
+```typescript
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+  app.useGlobalPipes(new ValidationPipe());
+  await app.listen(3000);
+}
+bootstrap();
+```
+
+### Example: ParseIntPipe
+This pipe converts a string to an integer and throws an error if it fails.
+
+```typescript
+@Injectable()
+export class ParseIntPipe implements PipeTransform<string, number> {
+  transform(value: string): number {
+    const val = parseInt(value, 10);
+    if (isNaN(val)) {
+      throw new BadRequestException('Validation failed');
+    }
+    return val;
+  }
+}
+```
+
+Use it like this:
+
+```typescript
+@Get(':id')
+async findOne(@Param('id', ParseIntPipe) id: number) {
+  return this.catsService.findOne(id);
+}
+```
+
+
+
+
