@@ -1136,7 +1136,7 @@ async findOne(@Param('id', ParseIntPipe) id: number) {
 
 
 
-
+# Guards in NestJS
 
 ### **Guards Overview**
 - **Definition**: Guards in NestJS are classes with the `@Injectable()` decorator, implementing the `CanActivate` interface. They control access to routes, often handling **authorization** by checking conditions like user roles.
