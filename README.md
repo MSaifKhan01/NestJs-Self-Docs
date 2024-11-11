@@ -1137,3 +1137,102 @@ async findOne(@Param('id', ParseIntPipe) id: number) {
 
 
 
+
+### **Guards Overview**
+- **Definition**: Guards in NestJS are classes with the `@Injectable()` decorator, implementing the `CanActivate` interface. They control access to routes, often handling **authorization** by checking conditions like user roles.
+- **Purpose**: Guards decide if a request should proceed to the route handler based on runtime checks (permissions, roles, etc.).
+
+### **Basic Guard Structure**
+Each guard implements a `canActivate()` function. This method returns `true` (allow request) or `false` (deny request).
+
+```typescript
+import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import { Observable } from 'rxjs';
+
+@Injectable()
+export class AuthGuard implements CanActivate {
+  canActivate(context: ExecutionContext): boolean | Promise<boolean> | Observable<boolean> {
+    const request = context.switchToHttp().getRequest();
+    return validateRequest(request); // Replace with your validation logic
+  }
+}
+```
+
+### **Execution Context**
+- **Purpose**: `ExecutionContext` provides request-related data. It’s useful because it knows the handler being executed, unlike middleware, which only calls `next()`.
+- **Usage**: `context.switchToHttp().getRequest()` extracts the HTTP request for validation.
+
+### **Types of Guards**
+1. **Controller-scoped**: Guards applied to an entire controller.
+    ```typescript
+    @Controller('cats')
+    @UseGuards(AuthGuard)
+    export class CatsController {}
+    ```
+   
+2. **Method-scoped**: Guards applied to a specific method.
+    ```typescript
+    @Controller('cats')
+    export class CatsController {
+      @Post()
+      @UseGuards(AuthGuard)
+      createCat() {}
+    }
+    ```
+   
+3. **Global-scoped**: Guards applied across all routes.
+    ```typescript
+    const app = await NestFactory.create(AppModule);
+    app.useGlobalGuards(new AuthGuard());
+    ```
+
+### **Role-based Authorization**
+1. **Create a Roles Guard**: Checks if a user has the required role.
+    ```typescript
+    import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+    import { Reflector } from '@nestjs/core';
+
+    @Injectable()
+    export class RolesGuard implements CanActivate {
+      constructor(private reflector: Reflector) {}
+
+      canActivate(context: ExecutionContext): boolean {
+        const roles = this.reflector.get<string[]>('roles', context.getHandler());
+        if (!roles) return true;
+
+        const request = context.switchToHttp().getRequest();
+        const user = request.user;
+        return roles.includes(user.role);
+      }
+    }
+    ```
+
+2. **Attach Roles Metadata**: Use a decorator to define roles.
+    ```typescript
+    import { SetMetadata } from '@nestjs/common';
+
+    export const Roles = (...roles: string[]) => SetMetadata('roles', roles);
+    ```
+
+3. **Use Roles Decorator**:
+    ```typescript
+    @Controller('cats')
+    export class CatsController {
+      @Post()
+      @Roles('admin')
+      createCat() {}
+    }
+    ```
+
+### **Error Handling**
+- If `canActivate()` returns `false`, NestJS throws a `ForbiddenException`, returning a `403 Forbidden` response.
+- You can throw custom errors as needed:
+    ```typescript
+    throw new UnauthorizedException();
+    ```
+
+
+
+
+
+
